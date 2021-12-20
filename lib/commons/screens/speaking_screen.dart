@@ -1,10 +1,12 @@
 import 'dart:math';
 import 'dart:ui';
 
+import 'package:encho/commons/models/provider_model.dart';
 import 'package:encho/commons/models/words_model.dart';
 import 'package:encho/commons/widgets/custom_snackbar.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_tts/flutter_tts.dart';
+import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:speech_to_text/speech_recognition_result.dart';
 import 'package:speech_to_text/speech_to_text.dart';
@@ -21,6 +23,8 @@ class _SpeakingScreenState extends State<SpeakingScreen> {
   Future<SharedPreferences> _prefs = SharedPreferences.getInstance();
   SharedPreferences prefs;
 
+  ProviderModel _provModel = ProviderModel();
+
   SpeechToText _speechToText = SpeechToText();
   bool _speechEnabled = false;
   bool cutRecord = true;
@@ -34,7 +38,7 @@ class _SpeakingScreenState extends State<SpeakingScreen> {
 
   bool _speakerStatus = false;
   bool _randomPlay = false;
-  int repeatCircle = 0;
+  int repeatCircle = 2;
   int countRepeat;
   int delayRepeat;
   String language;
@@ -144,6 +148,18 @@ class _SpeakingScreenState extends State<SpeakingScreen> {
     _getRepeatAndRandom();
   }
 
+  void didChangeDependences() {
+    super.didChangeDependencies();
+    setState(() {
+      pitch = _provModel.pitch;
+      rate = _provModel.rate;
+      countRepeat = _provModel.countRepeat.toInt();
+      delayRepeat = _provModel.delayRepeat.toInt();
+      // delayBetweenWords = _provModel.delayBetweenWords.toInt();
+      language = _provModel.correctLang;
+    });
+  }
+
   void dispose() {
     super.dispose();
     _savePrefs();
@@ -238,17 +254,10 @@ class _SpeakingScreenState extends State<SpeakingScreen> {
     await prefs.setInt("COUNT_REPEAT", countRepeat);
     await prefs.setInt("DELAY_REPEAT", delayRepeat);
     await prefs.setString("CORRECT_LANGUAGE", language);
+
   }
 
-  _resetButton() {
-    return MaterialButton(
-      child: Text(
-        "Reset settings",
-        style: TextStyle(),
-      ),
-      onPressed: () => _resetPrefs(),
-    );
-  }
+
 
   _blurEffect() {
     return Positioned(
@@ -279,6 +288,31 @@ class _SpeakingScreenState extends State<SpeakingScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final _provider = Provider.of<ProviderModel>(context);
+    final _provLang = _provider.correctLang;
+    final _provPitch = _provider.pitch;
+    final _provRate = _provider.rate;
+    final _provCountRepeat = _provider.countRepeat;
+    final _provDelayRepeat = _provider.delayRepeat;
+    final _provDelayBetweenWords = _provider.delayBetweenWords;
+
+    _resetButton() {
+      return MaterialButton(
+        child: Text(
+          "Reset settings",
+          style: TextStyle(),
+        ),
+        onPressed: () {
+          _resetPrefs();
+          _provider.changeLang("en");
+          _provider.changePitch(1.0);
+          _provider.changeRate(0.5);
+          _provider.changeCountRepeat(1);
+          _provider.changeDelayRepeat(3);
+        },
+      );
+    }
+
     Future<Null> _timer() async {
       if (_timerSec > 5) setState(() => _timerSec = 5);
 
@@ -335,7 +369,7 @@ class _SpeakingScreenState extends State<SpeakingScreen> {
         RichText(
           textAlign: TextAlign.center,
           text: TextSpan(
-            text: language == "ru"
+            text: _provLang == "ru"
                 ? "\n${wordList[id].enWord}\n"
                 : "\n${wordList[id].ruWord}\n",
             style: TextStyle(
@@ -343,16 +377,16 @@ class _SpeakingScreenState extends State<SpeakingScreen> {
                 fontWeight: FontWeight.bold,
                 color: Colors.black),
             children: [
-              language == "ru" ? _textSpanEnTrans() : _textSpanRuTrans(),
+              _provLang == "ru" ? _textSpanEnTrans() : _textSpanRuTrans(),
               TextSpan(
-                  text: "Статистика - спросить: $countRepeat\n",
+                  text: "Статистика - спросить: $_provCountRepeat\n",
                   style: TextStyle(fontSize: 20.0)),
               TextSpan(
                   text: "Статистика - спросил: $_i\n",
                   style: TextStyle(fontSize: 20.0)),
               TextSpan(text: "\n\n"),
               TextSpan(
-                text: language == "ru"
+                text: _provLang == "ru"
                     ? "${wordList[id].ruWord}\n"
                     : "${wordList[id].enWord}\n",
                 style: TextStyle(
@@ -432,17 +466,6 @@ class _SpeakingScreenState extends State<SpeakingScreen> {
           onPressed: id == wordList.length - 1 && repeatCircle == 0
               ? null
               : () => _nextWord(),
-              // : () {
-              //     if (id == wordList.length - 1 && repeatCircle == 1)
-              //       setState(() {
-              //         id = 0;
-              //         repeatCircle = 0;
-              //       });
-              //     if (id == wordList.length - 1 && repeatCircle == 2)
-              //       setState(() => id = 0);
-              //     if (_randomPlay) _randomNextWord();
-              //     if (id != wordList.length - 1) setState(() => id++);
-              //   },
           iconSize: 40.0,
           icon: Icon(
             Icons.arrow_forward,
@@ -464,8 +487,6 @@ class _SpeakingScreenState extends State<SpeakingScreen> {
     );
 
     return Stack(alignment: Alignment.center,
-        // fit: StackFit.expand,
-        // overflow: Overflow.visible,
         children: [
           Column(
             children: [
@@ -499,38 +520,23 @@ class _SpeakingScreenState extends State<SpeakingScreen> {
                   )),
             ],
           ),
-          Positioned(
-            top:10.0,
-            left: 10.0,
-            child: GestureDetector(
-              onTap: () async {
-                await _getPrefs();
-                // print('tap');
-              },
-              child: Container(
-                height: 50.0,
-                width: 50.0,
-                child: Icon(Icons.refresh, size: 50.0,),
-              ),
-            ),
-          ),
+
           Positioned(
             top:10.0,
             right: 10.0,
             child: GestureDetector(
               onTap: () async {
-                if (language == "ru")
-                  setState(() => language = "en");
+                if (_provLang == "ru")
+                  setState(() => _provider.changeLang("en"));
                 else
-                  setState(() => language = "ru");
+                  setState(() => _provider.changeLang("ru"));
                 await _savePrefs();
-                await _getPrefs();
                 // print('tap');
               },
               child: Container(
                 height: 40.0,
                 width: 50.0,
-                child: SvgPicture.asset(language == "ru"
+                child: SvgPicture.asset(_provLang == "ru"
                     ? "assets/icons/russia_icon.svg"
                     : "assets/icons/english_icon.svg"),
               ),
@@ -543,8 +549,8 @@ class _SpeakingScreenState extends State<SpeakingScreen> {
               : ClipOval(
                   child: Container(
                     alignment: Alignment.center,
-                    width: 200.0,
-                    height: 300.0,
+                    width: MediaQuery.of(context).size.width / 1.5,
+                    height: MediaQuery.of(context).size.width / 1.5,
                     decoration: BoxDecoration(
                         gradient: RadialGradient(
                       colors: [

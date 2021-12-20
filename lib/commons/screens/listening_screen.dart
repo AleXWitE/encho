@@ -1,9 +1,11 @@
 import 'dart:math';
 
+import 'package:encho/commons/models/provider_model.dart';
 import 'package:encho/commons/models/words_model.dart';
 import 'package:encho/commons/widgets/custom_snackbar.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_tts/flutter_tts.dart';
+import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
@@ -18,12 +20,14 @@ class ListeningScreen extends StatefulWidget {
 class _ListeningScreenState extends State<ListeningScreen> {
   Future<SharedPreferences> _prefs = SharedPreferences.getInstance();
   SharedPreferences prefs;
+  ProviderModel _provModel = ProviderModel();
+
 
   int countRepeat;
   int delayRepeat;
   int delayBetweenWords;
 
-  int repeatCircle = 0;
+  int repeatCircle = 2;
   bool randomPlay;
 
   dynamic languages;
@@ -57,6 +61,18 @@ class _ListeningScreenState extends State<ListeningScreen> {
     _initTts();
     _getPrefs();
     _getRepeatAndRandom();
+  }
+
+  void didChangeDependences() {
+    super.didChangeDependencies();
+    setState(() {
+      pitch = _provModel.pitch;
+      rate = _provModel.rate;
+      countRepeat = _provModel.countRepeat.toInt();
+      delayRepeat = _provModel.delayRepeat.toInt();
+      delayBetweenWords = _provModel.delayBetweenWords.toInt();
+      language = _provModel.correctLang;
+    });
   }
 
   _getRepeatAndRandom() async {
@@ -231,24 +247,39 @@ class _ListeningScreenState extends State<ListeningScreen> {
         text: "[${wordList[id].ruTrans}]", style: TextStyle(fontSize: 20.0));
   }
 
-  _resetButton() {
-    return MaterialButton(
-      child: Text(
-        "Reset settings",
-        style: TextStyle(),
-      ),
-      onPressed: () => _resetPrefs(),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
+    final _provider = Provider.of<ProviderModel>(context);
+    final _provLang = _provider.correctLang;
+    final _provPitch = _provider.pitch;
+    final _provRate = _provider.rate;
+    final _provCountRepeat = _provider.countRepeat;
+    final _provDelayRepeat = _provider.delayRepeat;
+    final _provDelayBetweenWords = _provider.delayBetweenWords;
+
+    _resetButton() {
+      return MaterialButton(
+        child: Text(
+          "Reset settings",
+          style: TextStyle(),
+        ),
+        onPressed: () {
+          _resetPrefs();
+          _provider.changeLang("en");
+          _provider.changePitch(1.0);
+          _provider.changeRate(0.5);
+          _provider.changeCountRepeat(1);
+          _provider.changeDelayRepeat(3);
+        },
+      );
+    }
+
     Widget textListen = Column(
       children: [
         RichText(
           textAlign: TextAlign.center,
           text: TextSpan(
-            text: language == "en"
+            text: _provLang == "en"
                 ? "\n${wordList[id].enWord}\n"
                 : "\n${wordList[id].ruWord}\n",
             style: TextStyle(
@@ -256,10 +287,10 @@ class _ListeningScreenState extends State<ListeningScreen> {
                 fontWeight: FontWeight.bold,
                 color: Colors.black),
             children: [
-              language == "en" ? _textSpanEnTrans() : _textSpanRuTrans(),
+              _provLang == "en" ? _textSpanEnTrans() : _textSpanRuTrans(),
               TextSpan(text: "\n\n"),
               TextSpan(
-                text: language == "en"
+                text: _provLang == "en"
                     ? "\n${wordList[id].ruWord}\n"
                     : "\n${wordList[id].enWord}\n",
                 style: TextStyle(
@@ -267,13 +298,13 @@ class _ListeningScreenState extends State<ListeningScreen> {
                     fontWeight: FontWeight.bold,
                     color: Colors.black),
               ),
-              language == "en" ? _textSpanRuTrans() : _textSpanEnTrans(),
+              _provLang == "en" ? _textSpanRuTrans() : _textSpanEnTrans(),
               TextSpan(text: "\n\n\n"),
               TextSpan(
                   text: "Count of repeat: x",
                   style: TextStyle(fontSize: 20.0, color: Colors.grey[500])),
               TextSpan(
-                  text: "$countRepeat",
+                  text: "$_provCountRepeat",
                   style: TextStyle(fontSize: 30.0, color: Colors.grey[500]))
             ],
           ),
@@ -405,38 +436,23 @@ class _ListeningScreenState extends State<ListeningScreen> {
               )),
         ],
       ),
-        Positioned(
-          top:10.0,
-          left: 10.0,
-          child: GestureDetector(
-            onTap: () async {
-              await _getPrefs();
-              // print('tap');
-            },
-            child: Container(
-              height: 50.0,
-              width: 50.0,
-              child: Icon(Icons.refresh, size: 50.0,),
-            ),
-          ),
-        ),
+
         Positioned(
           top:10.0,
           right: 10.0,
           child: GestureDetector(
             onTap: () async {
-              if (language == "ru")
-                setState(() => language = "en");
+              if (_provLang == "ru")
+                setState(() => _provider.changeLang("en"));
               else
-                setState(() => language = "ru");
+                setState(() => _provider.changeLang("ru"));
               await _savePrefs();
-              await _getPrefs();
-              // print('tap');
+              print('tap');
             },
             child: Container(
               height: 40.0,
               width: 50.0,
-              child: SvgPicture.asset(language == "ru"
+              child: SvgPicture.asset(_provLang == "ru"
                   ? "assets/icons/russia_icon.svg"
                   : "assets/icons/english_icon.svg"),
             ),

@@ -1,5 +1,7 @@
+import 'package:encho/commons/models/provider_model.dart';
 import 'package:encho/commons/models/words_model.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class SettingsPage extends StatefulWidget {
@@ -42,6 +44,13 @@ class _SettingsPageState extends State<SettingsPage> {
 
   @override
   Widget build(BuildContext context) {
+    final _provider = Provider.of<ProviderModel>(context);
+    final _provLang = _provider.correctLang;
+    final _provPitch = _provider.pitch;
+    final _provRate = _provider.rate;
+    final _provCountRepeat = _provider.countRepeat;
+    final _provDelayRepeat = _provider.delayRepeat;
+    final _provDelayBetweenWords = _provider.delayBetweenWords;
 
     setPitch() {
       return Column(children: [
@@ -60,9 +69,9 @@ class _SettingsPageState extends State<SettingsPage> {
           color: Colors.blueGrey[100],
         ),
         Slider(
-          value: pitch,
+          value: _provPitch,
           onChanged: (newPitch) {
-            setState(() => pitch = newPitch);
+            setState(() => _provider.changePitch(newPitch));
           },
           min: 0.5,
           max: 2.0,
@@ -70,7 +79,7 @@ class _SettingsPageState extends State<SettingsPage> {
           activeColor: Colors.blueGrey[300],
           thumbColor: Colors.grey[400],
           inactiveColor: Colors.blueGrey[100],
-          label: "Pitch: $pitch",
+          label: "Pitch: $_provPitch",
         ),
         Divider(
           indent: 5.0,
@@ -99,9 +108,9 @@ class _SettingsPageState extends State<SettingsPage> {
           color: Colors.blueGrey[100],
         ),
         Slider(
-          value: rate,
+          value: _provRate,
           onChanged: (newRate) {
-            setState(() => rate = newRate);
+            setState(() => _provider.changeRate(newRate));
           },
           min: 0.1,
           max: 1.0,
@@ -109,7 +118,7 @@ class _SettingsPageState extends State<SettingsPage> {
           activeColor: Colors.blueGrey[300],
           thumbColor: Colors.grey[400],
           inactiveColor: Colors.blueGrey[100],
-          label: "Rate: $rate",
+          label: "Rate: $_provRate",
         ),
         Divider(
           indent: 5.0,
@@ -138,9 +147,9 @@ class _SettingsPageState extends State<SettingsPage> {
           color: Colors.blueGrey[100],
         ),
         Slider(
-          value: countRepeat,
+          value: _provCountRepeat,
           onChanged: (newCount) {
-            setState(() => countRepeat = newCount);
+            setState(() => _provider.changeCountRepeat(newCount));
           },
           min: 1.0,
           max: 7.0,
@@ -148,7 +157,7 @@ class _SettingsPageState extends State<SettingsPage> {
           activeColor: Colors.blueGrey[300],
           thumbColor: Colors.grey[400],
           inactiveColor: Colors.blueGrey[100],
-          label: "Count of repeat: $countRepeat",
+          label: "Count of repeat: $_provCountRepeat",
         ),
         Divider(
           indent: 5.0,
@@ -177,9 +186,9 @@ class _SettingsPageState extends State<SettingsPage> {
           color: Colors.blueGrey[100],
         ),
         Slider(
-          value: delayRepeat,
+          value: _provDelayRepeat,
           onChanged: (newDelay) {
-            setState(() => delayRepeat = newDelay);
+            setState(() => _provider.changeDelayRepeat(newDelay));
           },
           min: 3.0,
           max: 9.0,
@@ -187,7 +196,7 @@ class _SettingsPageState extends State<SettingsPage> {
           activeColor: Colors.blueGrey[300],
           thumbColor: Colors.grey[400],
           inactiveColor: Colors.blueGrey[100],
-          label: "Delay of repeat: $delayRepeat",
+          label: "Delay of repeat: $_provDelayRepeat",
         ),
         Divider(
           indent: 5.0,
@@ -216,9 +225,9 @@ class _SettingsPageState extends State<SettingsPage> {
           color: Colors.blueGrey[100],
         ),
         Slider(
-          value: delayBetweenWords,
+          value: _provDelayBetweenWords,
           onChanged: (newDelay) {
-            setState(() => delayBetweenWords = newDelay);
+            setState(() => _provider.changeBetweenWords(newDelay));
           },
           min: 1.0,
           max: 7.0,
@@ -226,7 +235,7 @@ class _SettingsPageState extends State<SettingsPage> {
           activeColor: Colors.blueGrey[300],
           thumbColor: Colors.grey[400],
           inactiveColor: Colors.blueGrey[100],
-          label: "Setting the delay between words: $delayBetweenWords",
+          label: "Setting the delay between words: $_provDelayBetweenWords",
         ),
         Divider(
           indent: 5.0,
@@ -257,10 +266,10 @@ class _SettingsPageState extends State<SettingsPage> {
           ),
           DropdownButton<String>(
               hint: Text("Choose the language"),
-              value: language,
+              value: _provLang,
               onChanged: (value) {
                 setState(() {
-                  language = value;
+                  _provider.changeLang(value);
                 });
               },
               items: langs.map((item) {
@@ -268,19 +277,19 @@ class _SettingsPageState extends State<SettingsPage> {
                     value: item, child: Text(item));
               }).toList()),
           Text(
-              "Chosen language: ${language == null ? "not chosen" : language}"),
+              "Chosen language: ${_provLang == null ? "not chosen" : _provLang}"),
         ],
       );
     }
 
     _savePrefs() async {
       prefs = await _prefs;
-      await prefs.setDouble("PITCH", pitch);
-      await prefs.setDouble("RATE", rate);
-      await prefs.setInt("COUNT_REPEAT", countRepeat.toInt());
-      await prefs.setInt("DELAY_REPEAT", delayRepeat.toInt());
-      await prefs.setInt("DELAY_BETWEEN_WORDS", delayBetweenWords.toInt());
-      await prefs.setString("CORRECT_LANGUAGE", language);
+      await prefs.setDouble("PITCH", _provPitch);
+      await prefs.setDouble("RATE", _provRate);
+      await prefs.setInt("COUNT_REPEAT", _provCountRepeat.toInt());
+      await prefs.setInt("DELAY_REPEAT", _provDelayRepeat.toInt());
+      await prefs.setInt("DELAY_BETWEEN_WORDS", _provDelayBetweenWords.toInt());
+      await prefs.setString("CORRECT_LANGUAGE", _provLang);
     }
 
     return Scaffold(
