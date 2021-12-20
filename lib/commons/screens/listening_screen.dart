@@ -5,6 +5,8 @@ import 'package:encho/commons/widgets/custom_snackbar.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_tts/flutter_tts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_svg/flutter_svg.dart';
+
 
 enum TtsState { playing, stopped }
 
@@ -60,8 +62,8 @@ class _ListeningScreenState extends State<ListeningScreen> {
   _getRepeatAndRandom() async {
     prefs = await _prefs;
     setState(() {
-      repeatCircle = (prefs.getInt("REPEAT_CIRCLE") ?? 0);
-      randomPlay = (prefs.getBool("RANDOM_PLAY") ?? false);
+      repeatCircle = (prefs.getInt("REPEAT_CIRCLE") ?? 2);
+      randomPlay = (prefs.getBool("RANDOM_PLAY") ?? true);
     });
   }
 
@@ -95,13 +97,15 @@ class _ListeningScreenState extends State<ListeningScreen> {
 
   _getPrefs() async {
     prefs = await _prefs;
-    volume = (prefs.getDouble("VOLUME") ?? 0.5);
-    pitch = (prefs.getDouble("PITCH") ?? 1.0);
-    rate = (prefs.getDouble("RATE") ?? 0.5);
-    language = (prefs.getString("CORRECT_LANGUAGE") ?? "ru");
-    countRepeat = (prefs.getInt("COUNT_REPEAT") ?? 1);
-    delayRepeat = (prefs.getInt("DELAY_REPEAT") ?? 3);
-    delayBetweenWords = (prefs.getInt("DELAY_BETWEEN_WORDS") ?? 3);
+    setState(() {
+      volume = (prefs.getDouble("VOLUME") ?? 0.5);
+      pitch = (prefs.getDouble("PITCH") ?? 1.0);
+      rate = (prefs.getDouble("RATE") ?? 0.5);
+      language = (prefs.getString("CORRECT_LANGUAGE") ?? "ru");
+      countRepeat = (prefs.getInt("COUNT_REPEAT") ?? 1);
+      delayRepeat = (prefs.getInt("DELAY_REPEAT") ?? 3);
+      delayBetweenWords = (prefs.getInt("DELAY_BETWEEN_WORDS") ?? 3);
+    });
   }
 
   Future<dynamic> _getLanguages() => languages = flutterTts.getLanguages;
@@ -196,12 +200,12 @@ class _ListeningScreenState extends State<ListeningScreen> {
     prefs = await _prefs;
     await prefs.setInt("REPEAT_CIRCLE", repeatCircle);
     await prefs.setBool("RANDOM_PLAY", randomPlay);
+    await prefs.setString("CORRECT_LANGUAGE", language);
   }
 
   _resetPrefs() async {
     prefs = await _prefs;
     setState(() {
-      volume = 0.5;
       pitch = 1.0;
       rate = 0.5;
       countRepeat = 1;
@@ -209,7 +213,6 @@ class _ListeningScreenState extends State<ListeningScreen> {
       delayBetweenWords = 3;
       language = "en";
     });
-    await prefs.setDouble("VOLUME", volume);
     await prefs.setDouble("PITCH", pitch);
     await prefs.setDouble("RATE", rate);
     await prefs.setInt("COUNT_REPEAT", countRepeat);
@@ -375,31 +378,71 @@ class _ListeningScreenState extends State<ListeningScreen> {
       ],
     );
 
-    return Column(
-      children: [
-        Expanded(
-            flex: 7,
+    return Stack(
+      children: [Column(
+        children: [
+          Expanded(
+              flex: 7,
+              child: Container(
+                width: MediaQuery.of(context).size.width,
+                color: Colors.grey[300],
+                child: textListen,
+              )),
+          Expanded(
+              flex: 1,
+              child: Container(
+                width: MediaQuery.of(context).size.width,
+                color: Colors.grey[300],
+                padding: EdgeInsets.fromLTRB(30.0, 5.0, 30.0, 5.0),
+                child: _resetButton(),
+              )),
+          Expanded(
+              flex: 3,
+              child: Container(
+                width: MediaQuery.of(context).size.width,
+                child: playerListen,
+                color: Colors.grey[300],
+              )),
+        ],
+      ),
+        Positioned(
+          top:10.0,
+          left: 10.0,
+          child: GestureDetector(
+            onTap: () async {
+              await _getPrefs();
+              // print('tap');
+            },
             child: Container(
-              width: MediaQuery.of(context).size.width,
-              color: Colors.grey[300],
-              child: textListen,
-            )),
-        Expanded(
-            flex: 1,
+              height: 50.0,
+              width: 50.0,
+              child: Icon(Icons.refresh, size: 50.0,),
+            ),
+          ),
+        ),
+        Positioned(
+          top:10.0,
+          right: 10.0,
+          child: GestureDetector(
+            onTap: () async {
+              if (language == "ru")
+                setState(() => language = "en");
+              else
+                setState(() => language = "ru");
+              await _savePrefs();
+              await _getPrefs();
+              // print('tap');
+            },
             child: Container(
-              width: MediaQuery.of(context).size.width,
-              color: Colors.grey[300],
-              padding: EdgeInsets.fromLTRB(30.0, 5.0, 30.0, 5.0),
-              child: _resetButton(),
-            )),
-        Expanded(
-            flex: 3,
-            child: Container(
-              width: MediaQuery.of(context).size.width,
-              child: playerListen,
-              color: Colors.grey[300],
-            )),
-      ],
+              height: 40.0,
+              width: 50.0,
+              child: SvgPicture.asset(language == "ru"
+                  ? "assets/icons/russia_icon.svg"
+                  : "assets/icons/english_icon.svg"),
+            ),
+          ),
+        ),
+      ]
     );
   }
 }

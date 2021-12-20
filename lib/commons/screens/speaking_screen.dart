@@ -1,4 +1,5 @@
 import 'dart:math';
+import 'dart:ui';
 
 import 'package:encho/commons/models/words_model.dart';
 import 'package:encho/commons/widgets/custom_snackbar.dart';
@@ -7,6 +8,7 @@ import 'package:flutter_tts/flutter_tts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:speech_to_text/speech_recognition_result.dart';
 import 'package:speech_to_text/speech_to_text.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
 import 'listening_screen.dart';
 
@@ -28,6 +30,7 @@ class _SpeakingScreenState extends State<SpeakingScreen> {
 
   int id = 0;
   int _i = 0;
+  int _try = 0;
 
   bool _speakerStatus = false;
   bool _randomPlay = false;
@@ -35,7 +38,6 @@ class _SpeakingScreenState extends State<SpeakingScreen> {
   int countRepeat;
   int delayRepeat;
   String language;
-  double volume;
   double pitch;
   double rate;
 
@@ -55,29 +57,30 @@ class _SpeakingScreenState extends State<SpeakingScreen> {
 
   _getPrefs() async {
     prefs = await _prefs;
-    volume = (prefs.getDouble("VOLUME") ?? 0.5);
-    pitch = (prefs.getDouble("PITCH") ?? 1.0);
-    rate = (prefs.getDouble("RATE") ?? 0.5);
-    language = (prefs.getString("CORRECT_LANGUAGE") ?? "ru");
-    countRepeat = (prefs.getInt("COUNT_REPEAT") ?? 1);
-    delayRepeat = (prefs.getInt("DELAY_REPEAT") ?? 1);
+    setState(() {
+      pitch = (prefs.getDouble("PITCH") ?? 1.0);
+      rate = (prefs.getDouble("RATE") ?? 0.5);
+      language = (prefs.getString("CORRECT_LANGUAGE") ?? "ru");
+      countRepeat = (prefs.getInt("COUNT_REPEAT") ?? 1);
+      delayRepeat = (prefs.getInt("DELAY_REPEAT") ?? 1);
+    });
   }
 
   _getRepeatAndRandom() async {
     prefs = await _prefs;
     setState(() {
-      repeatCircle = (prefs.getInt("REPEAT_CIRCLE") ?? 0);
-      _randomPlay = (prefs.getBool("RANDOM_PLAY") ?? false);
+      repeatCircle = (prefs.getInt("REPEAT_CIRCLE") ?? 2);
+      _randomPlay = (prefs.getBool("RANDOM_PLAY") ?? true);
     });
   }
 
   _listen() async {
     setState(() => _speakerStatus = true);
     switch (language) {
-      case "en":
+      case "ru":
         setState(() => learningWord = wordList[id].ruWord);
         break;
-      case "ru":
+      case "en":
         setState(() => learningWord = wordList[id].enWord);
         break;
     }
@@ -90,6 +93,7 @@ class _SpeakingScreenState extends State<SpeakingScreen> {
       _check++;
     } else
       _checkWord = "wrong";
+    _try++;
 
     setState(() => _lastWords = "");
 
@@ -129,6 +133,7 @@ class _SpeakingScreenState extends State<SpeakingScreen> {
     prefs = await _prefs;
     await prefs.setInt("REPEAT_CIRCLE", repeatCircle);
     await prefs.setBool("RANDOM_PLAY", _randomPlay);
+    await prefs.setString("CORRECT_LANGUAGE", language);
   }
 
   void initState() {
@@ -174,22 +179,19 @@ class _SpeakingScreenState extends State<SpeakingScreen> {
 
   _startListen() async {
     await _getPrefs();
-    await flutterTts.setVolume(volume);
     await flutterTts.setSpeechRate(rate);
     await flutterTts.setPitch(pitch);
 
     switch (language) {
-      case "en":
-        _word1 = "Hi, now we will train the word ${wordList[id].enWord}";
-        _startWelcome = "In Russian it sounds like this";
+      case "ru":
+        _word1 = "${wordList[id].enWord}";
         _word2 = wordList[id].ruWord;
         _lang1 = "en";
         _lang2 = "ru";
         break;
-      case "ru":
+      case "en":
         _word1 =
-            "Привет, сейчас будем тренировать слово ${wordList[id].ruWord}";
-        _startWelcome = "По английски оно звучит таким образом";
+            "${wordList[id].ruWord}";
         _word2 = wordList[id].enWord;
         _lang1 = "ru";
         _lang2 = "en";
@@ -201,20 +203,17 @@ class _SpeakingScreenState extends State<SpeakingScreen> {
     if (_speakerStatus) result = await flutterTts.speak(_word1);
 
     if (_speakerStatus != true) {
-      _stopListen();
+      await _stopListen();
     }
     if (_speakerStatus) await Future.delayed(Duration(seconds: 4));
-    if (_speakerStatus) result = await flutterTts.speak(_startWelcome);
 
-    if (_speakerStatus) await Future.delayed(Duration(seconds: 3));
-
-    if (_speakerStatus) await flutterTts.setLanguage(_lang2);
-    if (_speakerStatus) result = await flutterTts.speak(_word2);
+    if (_speakerStatus && _try >= 1) await flutterTts.setLanguage(_lang2);
+    if (_speakerStatus && _try >= 1) result = await flutterTts.speak(_word2);
 
     if (result == 1) setState(() => ttsState = TtsState.playing);
 
     if (_speakerStatus == false) {
-      _stopListen();
+      await _stopListen();
     }
 
     await Future.delayed(Duration(seconds: 1));
@@ -223,6 +222,59 @@ class _SpeakingScreenState extends State<SpeakingScreen> {
   _stopListen() async {
     var result = await flutterTts.stop();
     if (result == 1) setState(() => ttsState = TtsState.stopped);
+  }
+
+  _resetPrefs() async {
+    prefs = await _prefs;
+    setState(() {
+      pitch = 1.0;
+      rate = 0.5;
+      countRepeat = 1;
+      delayRepeat = 3;
+      language = "en";
+    });
+    await prefs.setDouble("PITCH", pitch);
+    await prefs.setDouble("RATE", rate);
+    await prefs.setInt("COUNT_REPEAT", countRepeat);
+    await prefs.setInt("DELAY_REPEAT", delayRepeat);
+    await prefs.setString("CORRECT_LANGUAGE", language);
+  }
+
+  _resetButton() {
+    return MaterialButton(
+      child: Text(
+        "Reset settings",
+        style: TextStyle(),
+      ),
+      onPressed: () => _resetPrefs(),
+    );
+  }
+
+  _blurEffect() {
+    return Positioned(
+      top: 220.0,
+      left: 10.0,
+      bottom: 230.0,
+      right: 10.0,
+      child: ClipRect(
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 10.0, sigmaY: 10.0),
+          child: Container(),
+        ),
+      ),
+    );
+  }
+
+  _nextWord(){
+    if (id == wordList.length - 1 && repeatCircle == 1)
+      setState(() {
+        id = 0;
+        repeatCircle = 0;
+      });
+    if (id == wordList.length - 1 && repeatCircle == 2)
+      setState(() => id = 0);
+    if (_randomPlay) _randomNextWord();
+    if (id != wordList.length - 1) setState(() => id++);
   }
 
   @override
@@ -253,6 +305,14 @@ class _SpeakingScreenState extends State<SpeakingScreen> {
         await _listen();
         ScaffoldMessenger.of(context).showSnackBar(customSnackBar(_checkWord));
         await _checkStop();
+
+        if(_checkWord == "correct" || _try == 3){
+          setState(() {
+            _nextWord();
+            _try = 0;
+            _lastWords = "";
+          });
+        }
       }
 
       await _stop();
@@ -275,7 +335,7 @@ class _SpeakingScreenState extends State<SpeakingScreen> {
         RichText(
           textAlign: TextAlign.center,
           text: TextSpan(
-            text: language == "en"
+            text: language == "ru"
                 ? "\n${wordList[id].enWord}\n"
                 : "\n${wordList[id].ruWord}\n",
             style: TextStyle(
@@ -283,7 +343,7 @@ class _SpeakingScreenState extends State<SpeakingScreen> {
                 fontWeight: FontWeight.bold,
                 color: Colors.black),
             children: [
-              language == "en" ? _textSpanEnTrans() : _textSpanRuTrans(),
+              language == "ru" ? _textSpanEnTrans() : _textSpanRuTrans(),
               TextSpan(
                   text: "Статистика - спросить: $countRepeat\n",
                   style: TextStyle(fontSize: 20.0)),
@@ -292,7 +352,7 @@ class _SpeakingScreenState extends State<SpeakingScreen> {
                   style: TextStyle(fontSize: 20.0)),
               TextSpan(text: "\n\n"),
               TextSpan(
-                text: language == "en"
+                text: language == "ru"
                     ? "${wordList[id].ruWord}\n"
                     : "${wordList[id].enWord}\n",
                 style: TextStyle(
@@ -371,17 +431,18 @@ class _SpeakingScreenState extends State<SpeakingScreen> {
         IconButton(
           onPressed: id == wordList.length - 1 && repeatCircle == 0
               ? null
-              : () {
-                  if (id == wordList.length - 1 && repeatCircle == 1)
-                    setState(() {
-                      id = 0;
-                      repeatCircle = 0;
-                    });
-                  if (id == wordList.length - 1 && repeatCircle == 2)
-                    setState(() => id = 0);
-                  if (_randomPlay) _randomNextWord();
-                  if (id != wordList.length - 1) setState(() => id++);
-                },
+              : () => _nextWord(),
+              // : () {
+              //     if (id == wordList.length - 1 && repeatCircle == 1)
+              //       setState(() {
+              //         id = 0;
+              //         repeatCircle = 0;
+              //       });
+              //     if (id == wordList.length - 1 && repeatCircle == 2)
+              //       setState(() => id = 0);
+              //     if (_randomPlay) _randomNextWord();
+              //     if (id != wordList.length - 1) setState(() => id++);
+              //   },
           iconSize: 40.0,
           icon: Icon(
             Icons.arrow_forward,
@@ -415,15 +476,20 @@ class _SpeakingScreenState extends State<SpeakingScreen> {
                     color: Colors.grey[300],
                     child: textSpeaker,
                   )),
-              // Expanded(
-              //     flex: 1,
-              //     child: Container(
-              //       width: MediaQuery
-              //           .of(context)
-              //           .size
-              //           .width,
-              //       color: widget.type == '' ? Colors.red[200] : Colors.blue[100],
-              //     )),
+              Expanded(
+                  flex: 1,
+                  child: Container(
+                    width: MediaQuery
+                        .of(context)
+                        .size
+                        .width,
+                    color: Colors.grey[300],
+                    padding: EdgeInsets.fromLTRB(30.0, 5.0, 30.0, 5.0),
+                    child: Container(
+                      width: 50.0,
+                      child: _resetButton(),
+    ),
+                  )),
               Expanded(
                   flex: 3,
                   child: Container(
@@ -433,11 +499,48 @@ class _SpeakingScreenState extends State<SpeakingScreen> {
                   )),
             ],
           ),
+          Positioned(
+            top:10.0,
+            left: 10.0,
+            child: GestureDetector(
+              onTap: () async {
+                await _getPrefs();
+                // print('tap');
+              },
+              child: Container(
+                height: 50.0,
+                width: 50.0,
+                child: Icon(Icons.refresh, size: 50.0,),
+              ),
+            ),
+          ),
+          Positioned(
+            top:10.0,
+            right: 10.0,
+            child: GestureDetector(
+              onTap: () async {
+                if (language == "ru")
+                  setState(() => language = "en");
+                else
+                  setState(() => language = "ru");
+                await _savePrefs();
+                await _getPrefs();
+                // print('tap');
+              },
+              child: Container(
+                height: 40.0,
+                width: 50.0,
+                child: SvgPicture.asset(language == "ru"
+                    ? "assets/icons/russia_icon.svg"
+                    : "assets/icons/english_icon.svg"),
+              ),
+            ),
+          ),
+          _try < 2 ? _blurEffect() : Container(),
+
           _timerSec == 999
               ? Container()
               : ClipOval(
-                  // clipper: CustomClip(),
-
                   child: Container(
                     alignment: Alignment.center,
                     width: 200.0,
@@ -460,6 +563,7 @@ class _SpeakingScreenState extends State<SpeakingScreen> {
                     ),
                   ),
                 ),
+
         ]);
   }
 }

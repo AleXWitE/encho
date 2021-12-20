@@ -11,9 +11,7 @@ class _SettingsPageState extends State<SettingsPage> {
   Future<SharedPreferences> _prefs = SharedPreferences.getInstance();
   SharedPreferences prefs;
 
-  Languages language;
-  String _language;
-  double volume = 0.5;
+  String language;
   double pitch = 1.0;
   double rate = 0.5;
   double countRepeat = 1.0;
@@ -28,13 +26,12 @@ class _SettingsPageState extends State<SettingsPage> {
   _getPrefs() async {
     prefs = await _prefs;
     setState(() {
-      volume = (prefs.getDouble("VOLUME") ?? 0.5);
       pitch = (prefs.getDouble("PITCH") ?? 1.0);
       rate = (prefs.getDouble("RATE") ?? 0.5);
       countRepeat = (prefs.getInt("COUNT_REPEAT").toDouble() ?? 1);
       delayRepeat = (prefs.getInt("DELAY_REPEAT").toDouble() ?? 3);
       delayBetweenWords = (prefs.getInt("DELAY_BETWEEN_WORDS").toDouble() ?? 3);
-      _language = (prefs.getString("CORRECT_LANGUAGE") ?? "");
+      language = (prefs.getString("CORRECT_LANGUAGE") ?? "");
     });
   }
 
@@ -45,44 +42,6 @@ class _SettingsPageState extends State<SettingsPage> {
 
   @override
   Widget build(BuildContext context) {
-    setVolume() {
-      return Column(children: [
-        Container(
-          padding: EdgeInsets.symmetric(vertical: 10.0),
-          child: Text(
-            "Volume",
-            style: TextStyle(fontSize: 18.0),
-          ),
-        ),
-        Divider(
-          indent: 25.0,
-          endIndent: 25.0,
-          height: 5.0,
-          thickness: 2.0,
-          color: Colors.blueGrey[100],
-        ),
-        Slider(
-          value: volume,
-          onChanged: (newVolume) {
-            setState(() => volume = newVolume);
-          },
-          min: 0.0,
-          max: 1.0,
-          divisions: 10,
-          activeColor: Colors.blueGrey[300],
-          thumbColor: Colors.grey[400],
-          inactiveColor: Colors.blueGrey[100],
-          label: "Volume: $volume",
-        ),
-        Divider(
-          indent: 5.0,
-          endIndent: 5.0,
-          height: 5.0,
-          thickness: 2.0,
-          color: Colors.blueGrey[200],
-        ),
-      ]);
-    }
 
     setPitch() {
       return Column(children: [
@@ -296,34 +255,32 @@ class _SettingsPageState extends State<SettingsPage> {
             thickness: 2.0,
             color: Colors.blueGrey[100],
           ),
-          DropdownButton<Languages>(
+          DropdownButton<String>(
               hint: Text("Choose the language"),
               value: language,
               onChanged: (value) {
                 setState(() {
                   language = value;
-                  _language = value.lang;
                 });
               },
               items: langs.map((item) {
-                return DropdownMenuItem<Languages>(
-                    value: item, child: Text(item.lang));
+                return DropdownMenuItem<String>(
+                    value: item, child: Text(item));
               }).toList()),
           Text(
-              "Chosen language: ${_language == null ? "not chosen" : _language}"),
+              "Chosen language: ${language == null ? "not chosen" : language}"),
         ],
       );
     }
 
     _savePrefs() async {
       prefs = await _prefs;
-      await prefs.setDouble("VOLUME", volume);
       await prefs.setDouble("PITCH", pitch);
       await prefs.setDouble("RATE", rate);
       await prefs.setInt("COUNT_REPEAT", countRepeat.toInt());
       await prefs.setInt("DELAY_REPEAT", delayRepeat.toInt());
       await prefs.setInt("DELAY_BETWEEN_WORDS", delayBetweenWords.toInt());
-      await prefs.setString("CORRECT_LANGUAGE", language.lang.toString());
+      await prefs.setString("CORRECT_LANGUAGE", language);
     }
 
     return Scaffold(
@@ -340,7 +297,6 @@ class _SettingsPageState extends State<SettingsPage> {
       ),
       body: ListView(
         children: [
-          setVolume(),
           setPitch(),
           setRate(),
           setLanguage(),

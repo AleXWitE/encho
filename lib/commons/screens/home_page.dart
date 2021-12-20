@@ -102,7 +102,10 @@ class _HomePageState extends State<HomePage>
                 //     ])
                 GestureDetector(
                   onTap: () async {
-                    Navigator.push(context, MaterialPageRoute(builder: (BuildContext context) => SettingsPage()));
+                    Navigator.push(context, MaterialPageRoute(builder: (BuildContext context) => SettingsPage())).then((value) {
+                      // if(value == true)
+
+                    });
                     // Navigator.pushNamed(context, '/settings');
                   },
                   child: Icon(

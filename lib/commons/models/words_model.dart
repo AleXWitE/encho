@@ -28,8 +28,8 @@ class Languages {
   Languages(this.id, this.lang);
 }
 
-List<Languages> langs = [
-  Languages(1, "en"),
-  Languages(2, "ru"),
+List<String> langs = [
+  "en",
+  "ru",
 ];
 
